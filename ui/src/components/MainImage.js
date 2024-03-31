@@ -11,10 +11,11 @@ const MainImage = ({ imageObject }) => {
                 <button>&lt;</button>
                 <div>
                     <img src={imageObject.url} />
-                    <div>{imageObject.time}</div>
+                    
                 </div>
                 <button>&gt;</button>
             </div>
+            <div>{imageObject.time}</div>
             <div>
                 <button className='green'>Capture New</button>
                 <button className='red'>Delete Current</button>

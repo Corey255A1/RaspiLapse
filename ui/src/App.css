@@ -87,6 +87,7 @@ button.green:active{
 }
 
 .slide-image > button {
+  margin: 0;
   height: 100%;
   width: auto;
   font-size: 2rem;
@@ -104,9 +105,11 @@ button.green:active{
 .small-image {
   margin: 8px;
   color: white;
+
 }
 
 
 .small-image > img {
   width: 240px;
+  border-radius: 8px;
 }
