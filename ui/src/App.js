@@ -45,8 +45,11 @@ function App() {
           WunderVision - RaspiLapse
         </h1>
       </header>
-      <MainImage imageObject={currentImage}/>
-      <ImageList imageObjects={imageList} />
+      <MainImage 
+        imageObject={currentImage}/>
+      <ImageList 
+        imageObjects={imageList} 
+        imageSelectedCB={(imageObject)=>setCurrentImage(imageObject)}/>
     </div>
   );
 }
