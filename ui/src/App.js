@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import './App.css';
 import ImageList from './components/ImageList'
-
+import MainImage from './components/MainImage'
 const backend = "http://localhost:8080";
 
 
@@ -13,7 +14,7 @@ const backend = "http://localhost:8080";
 /**
  * @returns {ImageObject}
  */
-async function get_recent_images(){
+async function get_recent_images() {
   const server = `${backend}/recent`;
   console.log(server);
   const response = await fetch(server);
@@ -22,16 +23,30 @@ async function get_recent_images(){
   console.log(object);
   return object;
 }
-const imageList = await get_recent_images();
+
 function App() {
+  const [imageList, setImageList] = useState([]);
+  const [currentImage, setCurrentImage] = useState(null);
+  useEffect(() => {
+    async function update_image_list() {
+      const initial = await get_recent_images();
+      setImageList(initial);
+      if (initial.length > 0) {
+        setCurrentImage(initial[0]);
+      }
+    };
+    update_image_list();
+  }, []);
+
   return (
     <div className="App">
       <header className="App-header">
         <h1>
           WunderVision - RaspiLapse
         </h1>
-        <ImageList imageObjects={imageList}/>
       </header>
+      <MainImage imageObject={currentImage}/>
+      <ImageList imageObjects={imageList} />
     </div>
   );
 }

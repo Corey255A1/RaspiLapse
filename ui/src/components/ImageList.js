@@ -9,7 +9,7 @@ const ImageList = ({ imageObjects }) => {
   return (
     <div className="image-list">
       {imageObjects.map((imageObject, index) => (
-        <div>
+        <div className="small-image">
             <img key={index} src={imageObject.url} alt={`${index}`} />
             <div>{imageObject.time}</div>
         </div>
