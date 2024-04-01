@@ -1,6 +1,6 @@
 import React from 'react';
 
-const MainImage = ({ imageObject }) => {
+const MainImage = ({ imageObject, onCapture, onDelete }) => {
     if (imageObject == null) {
         return <div>No Images</div>;
     }
@@ -10,15 +10,14 @@ const MainImage = ({ imageObject }) => {
             <div className="slide-image">
                 <button>&lt;</button>
                 <div>
-                    <img src={imageObject.url} />
-                    
+                    <img src={imageObject.url} alt={imageObject.time}/>                    
                 </div>
                 <button>&gt;</button>
             </div>
             <div>{imageObject.time}</div>
             <div>
-                <button className='green'>Capture New</button>
-                <button className='red'>Delete Current</button>
+                <button className='green' onClick={()=>onCapture()}>Capture New</button>
+                <button className='red' onClick={()=>{onDelete(imageObject.time)}}>Delete Current</button>
             </div>
         </div>
     );
