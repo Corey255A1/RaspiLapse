@@ -8,9 +8,9 @@ import React from 'react';
 const ImageList = ({ imageObjects, onImageSelected }) => {
     return (
     <div className="image-list">
-      {imageObjects.map((imageObject, index) => (
+      {imageObjects.map((imageObject) => (
         <div onClick={()=>{onImageSelected(imageObject)}} className="small-image">
-            <img key={index} src={imageObject.url} alt={`${index}`} />
+            <img key={imageObject.time} src={imageObject.url} alt={`${imageObject.time}`} />
             <div>{imageObject.time}</div>
         </div>
       ))}

@@ -12,24 +12,24 @@ const backend = "http://localhost:8080";
  */
 
 function App() {
-  const [image_list, setImageList] = useState([]);
+  const [imageList, setImageList] = useState([]);
   const [current_image, setCurrentImage] = useState(null);
   useEffect(() => {
-    async function update_image_list() {
-      const initial = await get_recent_images();
+    async function updateImageList() {
+      const initial = await getRecentImages();
       setImageList(initial);
       if (initial.length > 0) {
         setCurrentImage(initial[0]);
       }
     };
-    update_image_list();
+    updateImageList();
   }, []);
 
 
   /**
    * @returns {ImageObject}
    */
-  async function get_recent_images() {
+  async function getRecentImages() {
     const route = `${backend}/recent`;
     console.log(route);
     const response = await fetch(route);
@@ -39,7 +39,7 @@ function App() {
     return object;
   }
 
-  async function delete_image(image_object_id) {
+  async function deleteImage(image_object_id) {
     const route = `${backend}/delete`;
     const body = JSON.stringify({ id: image_object_id });
     const response = await fetch(route, {
@@ -52,13 +52,23 @@ function App() {
       console.log(reason);
     });
     console.log(response);
-    if (response && response.ok) {
-      const index = image_list.findIndex(image_object=>image_object.time == image_object_id);
-      image_list.splice(index, 1);
-      console.log(image_list);
-      setImageList(image_list);
-      setCurrentImage(image_list[index]);
-    }
+    if (!(response && response.ok)) { return; }
+
+    const index = imageList.findIndex(image_object=>image_object.time === image_object_id);
+    imageList.splice(index, 1);
+    console.log(imageList);
+    setImageList(imageList.slice());
+    setCurrentImage(imageList[index]);
+  }
+
+  async function captureImage() {
+    const route = `${backend}/capture`;
+    const response = await fetch(route);
+    if (!(response && response.ok)) { return; }
+    const imageObject = await response.json();
+    imageList.unshift(imageObject);
+    console.log(imageList);
+    setImageList(imageList.slice());
   }
 
   return (
@@ -70,9 +80,10 @@ function App() {
       </header>
       <MainImage
         imageObject={current_image}
-        onDelete={delete_image} />
+        onDelete={deleteImage} 
+        onCapture={captureImage}/>
       <ImageList
-        imageObjects={image_list}
+        imageObjects={imageList}
         onImageSelected={(image_object) => setCurrentImage(image_object)} />
     </div>
   );
