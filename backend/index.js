@@ -9,14 +9,14 @@ const path = require('path');
 const app = express();
 const serverPort = process.env.RASPI_SRV_PORT || 8989;
 const cameraPort = process.env.RASPI_CAM_PORT || 7070;
-const IMAGE_STORE = process.env.RASPI_STORE || "/mnt/d/Documents/Time_Lapse";
-const currentCameras = {};
+const imageStorePath = process.env.RASPI_STORE || "/mnt/d/Documents/Time_Lapse";
+const currentCameras = [{ip:"192.168.1.106", status:"good"}];
 const testFile = "base_test.jpg";
 
 Date.prototype.getFileFormat = () => {
     const now = new Date();
     const year = now.getFullYear().toString();
-    const month = now.getMonth().toString().padStart(2, '0');
+    const month = (now.getMonth()+1).toString().padStart(2, '0');
     const day = now.getDay().toString().padStart(2, '0');
     const hour = now.getHours().toString().padStart(2, '0');
     const minute = now.getMinutes().toString().padStart(2, '0');
@@ -91,18 +91,31 @@ app.get('/previous', (req, res) => {
     }
 });
 
-app.get('/capture', (req, res) => {
+async function getCameraImage(camera) {
+    const camRes = await fetch(`http://${camera.ip}:${cameraPort}/get_photo`);
+    if ((!camRes && camRes.ok)) { throw "could not get image"; }
+    return await camRes.arrayBuffer();
+}
+
+function saveCameraImage(filePath, arrayBuffer){
+    fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
+}
+
+app.get('/capture', async (req, res) => {
+    if(currentCameras.length == 0) { 
+        res.status(404).send("No cameras");
+        return; 
+    }
+    const buffer = await getCameraImage(currentCameras[0]);
     const now = new Date();
     const timeString = now.getFileFormat();
     const fileName = `${timeString}.jpg`;
-    const originalFile = path.join(IMAGE_STORE, testFile);
-    const newFile = path.join(IMAGE_STORE, fileName);
-    fs.copyFile(originalFile, newFile, (copyResult) => {
-        console.log(copyResult);
-        const imageObject = { url: `http://192.168.1.125:1515/${fileName}`, time: timeString }
-        allPhotos.unshift(imageObject);
-        res.json(imageObject);
-    });
+    const newFile = path.join(imageStorePath, fileName);
+    
+    saveCameraImage(newFile, buffer);
+    const imageObject = { url: `http://192.168.1.125:1515/${fileName}`, time: timeString }
+    allPhotos.unshift(imageObject);
+    res.json(imageObject);
 });
 
 app.post('/delete', (req, res) => {
@@ -117,26 +130,39 @@ app.post('/delete', (req, res) => {
     }
 });
 
-async function updateCameraStatus(clientIP) {
+function findCamera(cameraIP) {
+    return currentCameras.find(cameraData => cameraData.ip == cameraIP);
+}
+
+async function updateCameraStatus(camera) {
     try {
-        const camRes = await fetch(`http://${clientIP}:${cameraPort}/status`);
+        const camRes = await fetch(`http://${camera.ip}:${cameraPort}/status`);
         if (!(camRes && camRes.ok)) {
-            currentCameras[clientIP] = { status: "bad response" };
+            camera.status = "bad response";
         } else {
-            currentCameras[clientIP] = await camRes.json();
+            camera.status = (await camRes.json()).status;
         }
     } catch (e) {
         console.log(e);
-        currentCameras[clientIP] = { status: "could not get status" };
+        camera.status = "could not get status";
     }
-    console.log(currentCameras[clientIP])
+    console.log(camera)
+}
+
+function registerCamera(clientIP) {
+    let camera = findCamera(clientIP);
+    if (!camera) {
+        camera = { ip: clientIP, status: "unknown" };
+        currentCameras.push(camera);
+    }
+    updateCameraStatus(camera);
 }
 
 app.get('/register', async (req, res) => {
     let clientIP = req.socket.remoteAddress;
     if (clientIP == "::1") { clientIP = "127.0.0.1"; }
 
-    setTimeout(() => { updateCameraStatus(clientIP) }, 5000);
+    setTimeout(() => { registerCamera(clientIP) }, 5000);
     res.sendStatus(200);
 });
 
