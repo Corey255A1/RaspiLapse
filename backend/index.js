@@ -2,32 +2,38 @@
 // https://www.wundervisionengineering.com/
 
 const express = require('express');
-const body_parser = require('body-parser');
+
+const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-const port = 8080;
+const serverPort = process.env.RASPI_SRV_PORT || 8989;
+const cameraPort = process.env.RASPI_CAM_PORT || 7070;
+const IMAGE_STORE = process.env.RASPI_STORE || "/mnt/d/Documents/Time_Lapse";
+const currentCameras = {};
+const testFile = "base_test.jpg";
 
-Date.prototype.getFileFormat = ()=>{
+Date.prototype.getFileFormat = () => {
     const now = new Date();
     const year = now.getFullYear().toString();
-    const month = now.getMonth().toString().padStart(2,'0');
-    const day = now.getDay().toString().padStart(2,'0');
-    const hour = now.getHours().toString().padStart(2,'0');
-    const minute = now.getMinutes().toString().padStart(2,'0');
-    const second = now.getSeconds().toString().padStart(2,'0');
+    const month = now.getMonth().toString().padStart(2, '0');
+    const day = now.getDay().toString().padStart(2, '0');
+    const hour = now.getHours().toString().padStart(2, '0');
+    const minute = now.getMinutes().toString().padStart(2, '0');
+    const second = now.getSeconds().toString().padStart(2, '0');
     return `${year}-${month}-${day}-${hour}${minute}${second}`;
 }
 
-const testFile = "base_test.jpg";
-const testFileRoot = "/mnt/d/Documents/Time_Lapse"
+
+
+
 const allPhotos = [
     { url: 'http://192.168.1.125:1515/2024-04-01-120000.jpg', time: '2024-04-01-120000' },
     { url: 'http://192.168.1.125:1515/2024-03-31-160000.jpg', time: '2024-03-31-160000' },
     { url: 'http://192.168.1.125:1515/2024-03-31-120000.jpg', time: '2024-03-31-120000' }
 ];
 
-app.use(body_parser.json());
+app.use(bodyParser.json());
 app.use(function (req, res, next) {
     let origin = req.headers.origin;
     res.header("Access-Control-Allow-Origin", req.headers.host.indexOf("localhost") > -1 ? "http://localhost:3000" : origin);
@@ -89,9 +95,9 @@ app.get('/capture', (req, res) => {
     const now = new Date();
     const timeString = now.getFileFormat();
     const fileName = `${timeString}.jpg`;
-    const originalFile = path.join(testFileRoot, testFile);
-    const newFile = path.join(testFileRoot, fileName);
-    fs.copyFile(originalFile, newFile, (copyResult)=>{
+    const originalFile = path.join(IMAGE_STORE, testFile);
+    const newFile = path.join(IMAGE_STORE, fileName);
+    fs.copyFile(originalFile, newFile, (copyResult) => {
         console.log(copyResult);
         const imageObject = { url: `http://192.168.1.125:1515/${fileName}`, time: timeString }
         allPhotos.unshift(imageObject);
@@ -105,13 +111,36 @@ app.post('/delete', (req, res) => {
     try {
         const index = findPhotoIndexByID(image_info.id);
         allPhotos.splice(index, 1);
-        res.status(200).send();
+        res.sendStatus(200);
     } catch (e) {
         res.status(400).json({ error: e });
     }
 });
 
+async function updateCameraStatus(clientIP) {
+    try {
+        const camRes = await fetch(`http://${clientIP}:${cameraPort}/status`);
+        if (!(camRes && camRes.ok)) {
+            currentCameras[clientIP] = { status: "bad response" };
+        } else {
+            currentCameras[clientIP] = await camRes.json();
+        }
+    } catch (e) {
+        console.log(e);
+        currentCameras[clientIP] = { status: "could not get status" };
+    }
+    console.log(currentCameras[clientIP])
+}
+
+app.get('/register', async (req, res) => {
+    let clientIP = req.socket.remoteAddress;
+    if (clientIP == "::1") { clientIP = "127.0.0.1"; }
+
+    setTimeout(() => { updateCameraStatus(clientIP) }, 5000);
+    res.sendStatus(200);
+});
+
 // Start the server
-app.listen(port, () => {
-    console.log(`Server listening at http://localhost:${port}`);
+app.listen(("0.0.0.0", serverPort), () => {
+    console.log(`Server listening at http://localhost:${serverPort}`);
 });
