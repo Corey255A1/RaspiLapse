@@ -1,0 +1,14 @@
+FROM ubuntu:latest
+ENV NODE_ENV=production
+ENV RASPI_STORE=/mnt/timelapse
+WORKDIR /usr/src/app
+RUN apt update
+RUN apt install -y curl
+RUN apt install -y git
+RUN apt install -y nodejs
+RUN apt install -y npm
+RUN git clone https://github.com/Corey255A1/RaspiLapse.git
+WORKDIR /usr/src/app/RaspiLapse/backend
+RUN npm install
+EXPOSE 8989
+CMD ["npm", "start"]
