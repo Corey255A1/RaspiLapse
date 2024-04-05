@@ -6,7 +6,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
-if(process.version < 18){
+const version = parseFloat(process.version.substring(1))
+console.log(version);
+if(version < 18){
     const fetch = require('node-fetch');
     console.log('using old fetch');
 }
