@@ -6,6 +6,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
+if(process.version < 18){
+    const fetch = require('node-fetch');
+    console.log('using old fetch');
+}
 const app = express();
 const serverPort = process.env.RASPI_SRV_PORT || 8989;
 const cameraPort = process.env.RASPI_CAM_PORT || 7070;
