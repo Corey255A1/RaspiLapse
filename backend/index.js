@@ -67,6 +67,7 @@ function findImageIndexByID(id) {
 
 async function getCameraImage(camera) {
     const camRes = await fetch(`http://${camera.ip}:${cameraPort}/get_photo`);
+    console.log(camRes);
     if ((!camRes && camRes.ok)) { throw "could not get image"; }
     return await camRes.arrayBuffer();
 }
@@ -178,6 +179,7 @@ app.get('/capture', async (req, res) => {
         saveImageObjectListToDisk()
         res.json(imageObject);
     } catch(e) {
+        console.log(e);
         res.status(400).send(e);
     }
 });
