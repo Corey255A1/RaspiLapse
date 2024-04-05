@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import './App.css';
 import ImageList from './components/ImageList'
 import MainImage from './components/MainImage'
-const backend = "http://localhost:8181";
+const backend = `http://${window.location.hostname}:8181`;
 
 
 /**
