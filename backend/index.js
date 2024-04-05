@@ -46,7 +46,7 @@ function loadImageObjectListFromDisk() {
 
 function saveImageObjectListToDisk() {
     fs.writeFile(imageStoreFilePath, JSON.stringify(imageObjectList), (error)=>{
-        console.log(error);
+        if(error){console.log(error);}
     });
 }
 
@@ -71,11 +71,29 @@ async function getCameraImage(camera) {
     return await camRes.arrayBuffer();
 }
 
-function saveCameraImage(filePath, arrayBuffer) {
-    fs.writeFile(filePath, Buffer.from(arrayBuffer), (error) => {
-        console.log(error);
+function saveCameraImage(imageBuffer) {
+    const now = new Date();
+    const timeString = now.getFileFormat();
+    const fileName = `${timeString}.jpg`;
+    const filePath = path.join(imageStorePath, fileName);
+    const imageObject = { url: `${imageStoreURL}/${fileName}`, time: timeString }
+    imageObjectList.unshift(imageObject);
+    fs.writeFile(filePath, Buffer.from(imageBuffer), (error) => {
+        if(error){console.log(error);}
     });
+    return imageObject;
 }
+
+function deleteImageByID(id){
+    const index = findImageIndexByID(id);
+    const oldImages = imageObjectList.splice(index, 1);
+    const fileName = `${oldImages[0].time}.jpg`;
+    const filePath = path.join(imageStorePath, fileName);
+    fs.rm(filePath,(error)=>{
+        if(error){console.log(error);}
+    })
+}
+
 
 
 function findCamera(cameraIP) {
@@ -155,14 +173,7 @@ app.get('/capture', async (req, res) => {
         return;
     }
     const buffer = await getCameraImage(currentCameras[0]);
-    const now = new Date();
-    const timeString = now.getFileFormat();
-    const fileName = `${timeString}.jpg`;
-    const newFile = path.join(imageStorePath, fileName);
-
-    saveCameraImage(newFile, buffer);
-    const imageObject = { url: `${imageStoreURL}/${fileName}`, time: timeString }
-    imageObjectList.unshift(imageObject);
+    const imageObject = saveCameraImage(buffer);
     saveImageObjectListToDisk()
     res.json(imageObject);
 });
@@ -171,8 +182,7 @@ app.post('/delete', (req, res) => {
     const image_info = req.body;
     console.log(image_info.id)
     try {
-        const index = findImageIndexByID(image_info.id);
-        imageObjectList.splice(index, 1);
+        deleteImageByID(image_info.id);
         res.sendStatus(200);
     } catch (e) {
         res.status(400).json({ error: e });
