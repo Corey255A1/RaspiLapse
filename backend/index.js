@@ -172,10 +172,14 @@ app.get('/capture', async (req, res) => {
         res.status(404).send("No cameras");
         return;
     }
-    const buffer = await getCameraImage(currentCameras[0]);
-    const imageObject = saveCameraImage(buffer);
-    saveImageObjectListToDisk()
-    res.json(imageObject);
+    try{
+        const buffer = await getCameraImage(currentCameras[0]);
+        const imageObject = saveCameraImage(buffer);
+        saveImageObjectListToDisk()
+        res.json(imageObject);
+    } catch(e) {
+        res.status(400).send(e);
+    }
 });
 
 app.post('/delete', (req, res) => {
