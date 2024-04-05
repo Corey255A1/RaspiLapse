@@ -8,10 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const version = parseFloat(process.version.substring(1))
 console.log(version);
-if(version < 18){
-    const fetch = require('node-fetch');
-    console.log('using old fetch');
-}
+const fetchWrap = version < 18 ? require('node-fetch') : fetch;
 const app = express();
 const serverPort = process.env.RASPI_SRV_PORT || 8989;
 const cameraPort = process.env.RASPI_CAM_PORT || 7070;
@@ -72,7 +69,7 @@ function findImageIndexByID(id) {
 }
 
 async function getCameraImage(camera) {
-    const camRes = await fetch(`http://${camera.ip}:${cameraPort}/get_photo`);
+    const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/get_photo`);
     console.log(camRes);
     if ((!camRes && camRes.ok)) { throw "could not get image"; }
     return await camRes.arrayBuffer();
@@ -109,7 +106,7 @@ function findCamera(cameraIP) {
 
 async function updateCameraStatus(camera) {
     try {
-        const camRes = await fetch(`http://${camera.ip}:${cameraPort}/status`);
+        const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/status`);
         if (!(camRes && camRes.ok)) {
             camera.status = "bad response";
         } else {
