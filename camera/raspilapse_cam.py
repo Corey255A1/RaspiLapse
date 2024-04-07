@@ -45,7 +45,7 @@ def get_raw_image():
     return rgbCapture.array
 
 def grab_photo():
-    frame = grab_raw_image()
+    frame = get_raw_image()
     time_stamp(frame)
     return jpeg_encode(frame)
 
