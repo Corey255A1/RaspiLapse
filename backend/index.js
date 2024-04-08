@@ -70,7 +70,6 @@ function findImageIndexByID(id) {
 
 async function getCameraImage(camera) {
     const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/get_photo`);
-    console.log(camRes);
     if ((!camRes && camRes.ok)) { throw "could not get image"; }
     return await camRes.arrayBuffer();
 }
@@ -93,6 +92,7 @@ function deleteImageByID(id){
     const oldImages = imageObjectList.splice(index, 1);
     const fileName = `${oldImages[0].time}.jpg`;
     const filePath = path.join(imageStorePath, fileName);
+    console.log(filePath);
     fs.rm(filePath,(error)=>{
         if(error){console.log(error);}
     })
@@ -194,7 +194,7 @@ app.post('/delete', (req, res) => {
         deleteImageByID(image_info.id);
         res.sendStatus(200);
     } catch (e) {
-        res.status(400).json({ error: e });
+        res.status(400).json({ error: e.toString() });
     }
 });
 
