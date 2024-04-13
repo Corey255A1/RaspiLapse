@@ -45,7 +45,7 @@ let currentPictureCount = 0;
 let pictureIntervalHours = (process.env.CAM_HOURS || 2);
 let nextPictureHour = -1;
 let lastDate = new Date();
-let lastInterval = Date.now();
+let lastInterval = 0;
 let checkIntervalMS = ((process.env.CAM_INTERVAL || 15) * 60 * 1000);
 
 function isNowInTimeRange() {
@@ -69,6 +69,7 @@ async function cameraCheckInterval() {
     const currentInterval = Date.now()
     const waitTime = (lastInterval + checkIntervalMS) - currentInterval;
     lastInterval = currentInterval;
+    console.log(waitTime)
     console.log(lastInterval)
     setTimeout(cameraCheckInterval, waitTime);
 
