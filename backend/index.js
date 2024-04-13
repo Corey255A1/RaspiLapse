@@ -67,8 +67,8 @@ async function processCamera() {
 
 async function cameraCheckInterval() {
     const currentInterval = Date.now()
-    const waitTime = (lastInterval + checkIntervalMS) - currentInterval;
-    lastInterval = currentInterval;
+    lastInterval = (lastInterval + checkIntervalMS);
+    const waitTime = lastInterval - currentInterval;
     console.log(waitTime)
     console.log(lastInterval)
     setTimeout(cameraCheckInterval, waitTime);
