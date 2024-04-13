@@ -55,9 +55,11 @@ function isNowInTimeRange() {
 
 async function processCamera() {
     if(!(await isObjectDetected(currentCameras[0]))){
+        console.log("Updating");
         await updateCameraBackground(currentCameras[0]);
         return false;
     } else {
+        console.log("capturing");
         await captureAndSaveCameraImage(currentCameras[0]);
         return true;
     }
@@ -67,6 +69,7 @@ async function cameraCheckInterval() {
     const currentInterval = Date.now()
     const waitTime = (lastInterval + checkIntervalMS) - currentInterval;
     lastInterval = currentInterval;
+    console.log(lastInterval)
     setTimeout(cameraCheckInterval, waitTime);
 
     if(!isNowInTimeRange()){ return; }
@@ -83,7 +86,7 @@ async function cameraCheckInterval() {
     { 
         return; 
     }
-
+    console.log("Processing");
     if((await processCamera())) {
         currentPictureCount += 1;
         nextPictureHour = currentDate.getHours() + pictureIntervalHours;
