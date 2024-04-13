@@ -22,7 +22,7 @@ Date.prototype.getFileFormat = () => {
     const now = new Date();
     const year = now.getFullYear().toString();
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDay().toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
     const hour = now.getHours().toString().padStart(2, '0');
     const minute = now.getMinutes().toString().padStart(2, '0');
     const second = now.getSeconds().toString().padStart(2, '0');
@@ -38,6 +38,57 @@ Date.prototype.getFileFormat = () => {
  * @type {Array<ImageObject>}
  */
 let imageObjectList = null;
+let dailyStartHour = 10;
+let dailyEndHour = 18;
+let picturesPerDay = 3;
+let currentPictureCount = 0;
+let pictureIntervalHours = 2;
+let nextPictureHour = -1;
+let lastDate = new Date();
+let lastInterval = Date.now();
+let checkIntervalMS = (15 * 60 * 1000);
+
+function isNowInTimeRange() {
+    const currentHour = (new Date()).getHours();
+    return (currentHour >= dailyStartHour) && (currentHour < dailyEndHour);
+}
+
+async function processCamera() {
+    if(!(await isObjectDetected(currentCameras[0]))){
+        await updateCameraBackground(currentCameras[0]);
+        return false;
+    } else {
+        await captureAndSaveCameraImage(currentCameras[0]);
+        return true;
+    }
+}
+
+async function cameraCheckInterval() {
+    const currentInterval = Date.now()
+    const waitTime = (lastInterval + checkIntervalMS) - currentInterval;
+    lastInterval = currentInterval;
+    setTimeout(cameraCheckInterval, waitTime);
+
+    if(!isNowInTimeRange()){ return; }
+
+    const currentDate = new Date();
+    if(currentDate.getDate() != lastDate.getDate()) {
+        currentPictureCount = 0;
+        nextPictureHour = -1;
+    }
+    lastDate = currentDate;
+
+    if(currentPictureCount >= picturesPerDay ||
+        currentDate.getHours() < nextPictureHour) 
+    { 
+        return; 
+    }
+
+    if((await processCamera())) {
+        currentPictureCount += 1;
+        nextPictureHour = currentDate.getHours() + pictureIntervalHours;
+    }
+}
 
 function loadImageObjectListFromDisk() {
     try {
@@ -74,6 +125,19 @@ async function getCameraImage(camera) {
     return await camRes.arrayBuffer();
 }
 
+async function isObjectDetected(camera) {
+    const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/is_object_detected`);
+    if ((!camRes && camRes.ok)) { throw "could not get response"; }
+    const responseObject = await camRes.json();
+    return responseObject.detected > 200;
+}
+
+async function updateCameraBackground(camera) {
+    const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/update_background_image`);
+    if ((!camRes && camRes.ok)) { throw "could not update background"; }
+    return true;
+}
+
 function saveCameraImage(imageBuffer) {
     const now = new Date();
     const timeString = now.getFileFormat();
@@ -84,6 +148,13 @@ function saveCameraImage(imageBuffer) {
     fs.writeFile(filePath, Buffer.from(imageBuffer), (error) => {
         if(error){console.log(error);}
     });
+    return imageObject;
+}
+
+async function captureAndSaveCameraImage(camera) {
+    const buffer = await getCameraImage(camera);
+    const imageObject = saveCameraImage(buffer);
+    saveImageObjectListToDisk();
     return imageObject;
 }
 
@@ -127,6 +198,8 @@ function registerCamera(clientIP) {
     updateCameraStatus(camera);
 }
 
+
+
 app.use(bodyParser.json());
 app.use(function (req, res, next) {
     let origin = req.headers.origin;
@@ -146,11 +219,11 @@ app.get('/next', (req, res) => {
     const id = req.query.id;
     try {
         const index = findImageIndexByID(id);
-        const next_index = index - 1;
-        if (next_index < 0) {
+        const nextIndex = index - 1;
+        if (nextIndex < 0) {
             throw 'No more photos';
         }
-        res.json(imageObjectList[next_index]);
+        res.json(imageObjectList[nextIndex]);
     } catch (e) {
         res.status(400).json({ error: e.toString() });
     }
@@ -176,20 +249,17 @@ app.get('/capture', async (req, res) => {
         return;
     }
     try{
-        const buffer = await getCameraImage(currentCameras[0]);
-        const imageObject = saveCameraImage(buffer);
-        saveImageObjectListToDisk()
-        res.json(imageObject);
+        res.json(captureAndSaveCameraImage(currentCameras[0]));
     } catch(e) {
         res.status(400).json({ error: e.toString() });
     }
 });
 
 app.post('/delete', (req, res) => {
-    const image_info = req.body;
-    console.log(image_info.id)
+    const imageInfo = req.body;
+    console.log(imageInfo.id)
     try {
-        deleteImageByID(image_info.id);
+        deleteImageByID(imageInfo.id);
         res.sendStatus(200);
     } catch (e) {
         res.status(400).json({ error: e.toString() });
@@ -210,4 +280,5 @@ imageObjectList = loadImageObjectListFromDisk();
 // Start the server
 app.listen(("0.0.0.0", serverPort), () => {
     console.log(`Server listening at http://localhost:${serverPort}`);
+    cameraCheckInterval();
 });
