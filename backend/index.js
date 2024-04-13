@@ -45,7 +45,7 @@ let currentPictureCount = 0;
 let pictureIntervalHours = (process.env.CAM_HOURS || 2);
 let nextPictureHour = -1;
 let lastDate = new Date();
-let lastInterval = 0;
+let lastInterval = Date.now();
 let checkIntervalMS = ((process.env.CAM_INTERVAL || 15) * 60 * 1000);
 
 function isNowInTimeRange() {
@@ -284,5 +284,6 @@ imageObjectList = loadImageObjectListFromDisk();
 // Start the server
 app.listen(("0.0.0.0", serverPort), () => {
     console.log(`Server listening at http://localhost:${serverPort}`);
+    lastInterval = Date.now();
     cameraCheckInterval();
 });
