@@ -92,13 +92,12 @@ function deleteImageByID(id){
     const oldImages = imageObjectList.splice(index, 1);
     const fileName = `${oldImages[0].time}.jpg`;
     const filePath = path.join(imageStorePath, fileName);
-    console.log(filePath);
-    fs.rm(filePath,(error)=>{
+    console.log(`Deleting ${filePath}`);
+    // Old NodeJS doesn't have rm
+    fs.unlink(filePath, (error)=>{
         if(error){console.log(error);}
     })
 }
-
-
 
 function findCamera(cameraIP) {
     return currentCameras.find(cameraData => cameraData.ip == cameraIP);
@@ -153,7 +152,7 @@ app.get('/next', (req, res) => {
         }
         res.json(imageObjectList[next_index]);
     } catch (e) {
-        res.status(400).json({ error: e });
+        res.status(400).json({ error: e.toString() });
     }
 });
 
@@ -167,7 +166,7 @@ app.get('/previous', (req, res) => {
         }
         res.json(imageObjectList[pervious_index]);
     } catch (e) {
-        res.status(400).json({ error: e });
+        res.status(400).json({ error: e.toString() });
     }
 });
 
@@ -182,8 +181,7 @@ app.get('/capture', async (req, res) => {
         saveImageObjectListToDisk()
         res.json(imageObject);
     } catch(e) {
-        console.log(e);
-        res.status(400).send(e);
+        res.status(400).json({ error: e.toString() });
     }
 });
 
