@@ -50,18 +50,24 @@ let checkIntervalMS = ((process.env.CAM_INTERVAL || 15) * 60 * 1000);
 
 function isNowInTimeRange() {
     const currentHour = (new Date()).getHours();
+    console.log(currentHour);
     return (currentHour >= dailyStartHour) && (currentHour < dailyEndHour);
 }
 
-async function processCamera() {
-    if(!(await isObjectDetected(currentCameras[0]))){
-        console.log("Updating");
-        await updateCameraBackground(currentCameras[0]);
-        return false;
-    } else {
-        console.log("capturing");
-        await captureAndSaveCameraImage(currentCameras[0]);
-        return true;
+async function processCamera(shouldTakePicture) {
+    try {
+        //Only update the background if an object is not detected
+        if (!(await isObjectDetected(currentCameras[0]))) {
+            console.log("Updating");
+            await updateCameraBackground(currentCameras[0]);
+            return false;
+        } else if(shouldTakePicture) { //Only take a picture if we are allowed
+            console.log("capturing");
+            await captureAndSaveCameraImage(currentCameras[0]);
+            return true;
+        }
+    } catch (e) {
+        console.log(e);
     }
 }
 
@@ -73,22 +79,18 @@ async function cameraCheckInterval() {
     console.log(lastInterval)
     setTimeout(cameraCheckInterval, waitTime);
 
-    if(!isNowInTimeRange()){ return; }
+    if (!isNowInTimeRange()) { return; }
 
     const currentDate = new Date();
-    if(currentDate.getDate() != lastDate.getDate()) {
+    if (currentDate.getDate() != lastDate.getDate()) {
         currentPictureCount = 0;
         nextPictureHour = -1;
     }
     lastDate = currentDate;
-
-    if(currentPictureCount >= picturesPerDay ||
-        currentDate.getHours() < nextPictureHour) 
-    { 
-        return; 
-    }
+    const shouldTakePicture = (currentDate.getHours() > nextPictureHour) && 
+                                    (currentPictureCount < picturesPerDay);
     console.log("Processing");
-    if((await processCamera())) {
+    if ((await processCamera(shouldTakePicture))) {
         currentPictureCount += 1;
         nextPictureHour = currentDate.getHours() + pictureIntervalHours;
     }
@@ -103,8 +105,8 @@ function loadImageObjectListFromDisk() {
 }
 
 function saveImageObjectListToDisk() {
-    fs.writeFile(imageStoreFilePath, JSON.stringify(imageObjectList), (error)=>{
-        if(error){console.log(error);}
+    fs.writeFile(imageStoreFilePath, JSON.stringify(imageObjectList), (error) => {
+        if (error) { console.log(error); }
     });
 }
 
@@ -150,7 +152,7 @@ function saveCameraImage(imageBuffer) {
     const imageObject = { url: `${imageStoreURL}/${fileName}`, time: timeString }
     imageObjectList.unshift(imageObject);
     fs.writeFile(filePath, Buffer.from(imageBuffer), (error) => {
-        if(error){console.log(error);}
+        if (error) { console.log(error); }
     });
     return imageObject;
 }
@@ -162,15 +164,15 @@ async function captureAndSaveCameraImage(camera) {
     return imageObject;
 }
 
-function deleteImageByID(id){
+function deleteImageByID(id) {
     const index = findImageIndexByID(id);
     const oldImages = imageObjectList.splice(index, 1);
     const fileName = `${oldImages[0].time}.jpg`;
     const filePath = path.join(imageStorePath, fileName);
     console.log(`Deleting ${filePath}`);
     // Old NodeJS doesn't have rm
-    fs.unlink(filePath, (error)=>{
-        if(error){console.log(error);}
+    fs.unlink(filePath, (error) => {
+        if (error) { console.log(error); }
     })
 }
 
@@ -252,9 +254,9 @@ app.get('/capture', async (req, res) => {
         res.status(404).send("No cameras");
         return;
     }
-    try{
+    try {
         res.json(captureAndSaveCameraImage(currentCameras[0]));
-    } catch(e) {
+    } catch (e) {
         res.status(400).json({ error: e.toString() });
     }
 });

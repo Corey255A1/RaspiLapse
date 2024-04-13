@@ -89,7 +89,7 @@ def apply_region(frame):
 def handle_get_diff_image():
    return Response(jpeg_encode(apply_region(get_diff_image())).tostring(), content_type='image/jpeg')
 
-def set_base_image(initial_count):
+def set_background_image(initial_count):
     # Create a new background subtractor
     global background_subtractor
     background_subtractor = cv2.createBackgroundSubtractorMOG2()
@@ -97,20 +97,21 @@ def set_base_image(initial_count):
        background_subtractor.apply(frame)
     return background_subtractor
 
-@app.route("/set_base_image")
-def handle_set_base_image():
-    subtractor = set_base_image(4)
+@app.route("/set_background_image")
+def handle_set_background_image():
+    subtractor = set_background_image(4)
     return Response(jpeg_encode(subtractor.getBackgroundImage()).tostring(), content_type='image/jpeg')
 
-def update_base_image(count):
+def update_background_image(count):
     global background_subtractor
     for frame in get_raw_image_sequence(count):
        background_subtractor.apply(frame)
     return background_subtractor
 
-@app.route("/update_base_image")
-def handle_update_base_image():
-    subtractor = update_base_image(4)
+@app.route("/update_background_image")
+def handle_update_background_image():
+    print("updating background")
+    subtractor = update_background_image(4)
     return Response(jpeg_encode(subtractor.getBackgroundImage()).tostring(), content_type='image/jpeg')
 
 def set_detection_region(x1, y1, x2, y2):
@@ -137,6 +138,7 @@ def get_contour_count():
 
 @app.route("/is_object_detected")
 def handle_is_object_detected():
+    print("handling object detection")
     return jsonify({"detected":get_contour_count()})
 
 
