@@ -42,11 +42,11 @@ let dailyStartHour = 10;
 let dailyEndHour = 18;
 let picturesPerDay = 3;
 let currentPictureCount = 0;
-let pictureIntervalHours = 2;
+let pictureIntervalHours = (process.env.CAM_HOURS || 2);
 let nextPictureHour = -1;
 let lastDate = new Date();
 let lastInterval = Date.now();
-let checkIntervalMS = (15 * 60 * 1000);
+let checkIntervalMS = ((process.env.CAM_INTERVAL || 15) * 60 * 1000);
 
 function isNowInTimeRange() {
     const currentHour = (new Date()).getHours();
