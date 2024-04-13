@@ -12,4 +12,4 @@ WORKDIR /usr/src/app/RaspiLapse/backend
 RUN npm install
 RUN npm install node-fetch@2
 EXPOSE 8989
-CMD ["npm", "start"]
+CMD ["/bin/sh", "-c", "git pull; npm start"]
