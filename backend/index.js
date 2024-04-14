@@ -70,7 +70,7 @@ function updateTimeInterval(lastInterval, intervalSpan) {
 function checkAndUpdateDayChange() {
     const currentDate = new Date();
     timeLapseState.startNewDay = false;
-    if (currentDate.getDate() != lastDate.getDate()) {
+    if (currentDate.getDate() != timeLapseState.lastDate.getDate()) {
         timeLapseState.currentPictureCount = 0;
         timeLapseState.nextPictureHour = -1;
         timeLapseState.startNewDay = true;
@@ -79,6 +79,7 @@ function checkAndUpdateDayChange() {
 }
 
 async function processCamera() {
+    const currentDate = new Date();
     const shouldTakePicture = (currentDate.getHours() > timeLapseState.nextPictureHour) &&
     (timeLapseState.currentPictureCount < timeLapseConfiguration.picturesPerDay);
     try {
