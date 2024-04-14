@@ -283,7 +283,7 @@ app.get('/capture', async (req, res) => {
         return;
     }
     try {
-        res.json(captureAndSaveCameraImage(currentCameras[0]));
+        res.json(await captureAndSaveCameraImage(currentCameras[0]));
     } catch (e) {
         res.status(400).json({ error: e.toString() });
     }
