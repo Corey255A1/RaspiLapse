@@ -81,7 +81,7 @@ function checkAndUpdateDayChange() {
 
 async function processCamera() {
     const currentDate = new Date();
-    const shouldTakePicture = (currentDate.getHours() > timeLapseState.nextPictureHour) &&
+    const shouldTakePicture = (currentDate.getHours() >= timeLapseState.nextPictureHour) &&
     (timeLapseState.currentPictureCount < timeLapseConfiguration.picturesPerDay);
     try {
         //Only update the background if an object is not detected
