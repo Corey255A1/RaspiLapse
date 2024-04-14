@@ -40,12 +40,12 @@ Date.prototype.getFileFormat = () => {
 let imageObjectList = null;
 
 const timeLapseConfiguration = {
-    dailyStartHour: (process.env.CAM_START || 10),
-    dailyEndHour: (process.env.CAM_END || 18),
-    picturesPerDay: (process.env.CAM_MAX_PICS || 3),
-    pictureIntervalHours: (process.env.CAM_HOURS || 2),
-    checkIntervalMS: ((process.env.CAM_INTERVAL || 15) * 60 * 1000),
-    contourThreshold: (process.env.CAM_THRESHOLD || 50)
+    dailyStartHour: parseInt(process.env.CAM_START || 10),
+    dailyEndHour: parseInt(process.env.CAM_END || 18),
+    picturesPerDay: parseInt(process.env.CAM_MAX_PICS || 3),
+    pictureIntervalHours: parseInt(process.env.CAM_HOURS || 2),
+    checkIntervalMS: parseInt((process.env.CAM_INTERVAL || 15) * 60 * 1000),
+    contourThreshold: parseInt(process.env.CAM_THRESHOLD || 50)
 }
 const timeLapseState = {
     nextPictureHour: -1,
@@ -83,6 +83,7 @@ async function processCamera() {
     const currentDate = new Date();
     const shouldTakePicture = (currentDate.getHours() >= timeLapseState.nextPictureHour) &&
     (timeLapseState.currentPictureCount < timeLapseConfiguration.picturesPerDay);
+    console.log(timeLapseState);
     try {
         //Only update the background if an object is not detected
         if (!(await isObjectDetected(currentCameras[0]))) {
@@ -90,7 +91,7 @@ async function processCamera() {
             await updateCameraBackground(currentCameras[0]);
             return false;
         } else if (shouldTakePicture) { //Only take a picture if we are allowed
-            console.log("capturing");
+            console.log("Capturing");
             await captureAndSaveCameraImage(currentCameras[0]);
             timeLapseState.currentPictureCount += 1;
             timeLapseState.nextPictureHour = currentDate.getHours() + timeLapseConfiguration.pictureIntervalHours;
