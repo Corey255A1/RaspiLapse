@@ -38,32 +38,60 @@ Date.prototype.getFileFormat = () => {
  * @type {Array<ImageObject>}
  */
 let imageObjectList = null;
-let dailyStartHour = 10;
-let dailyEndHour = 18;
-let picturesPerDay = 3;
-let currentPictureCount = 0;
-let pictureIntervalHours = (process.env.CAM_HOURS || 2);
-let nextPictureHour = -1;
-let lastDate = new Date();
-let lastInterval = Date.now();
-let checkIntervalMS = ((process.env.CAM_INTERVAL || 15) * 60 * 1000);
 
-function isNowInTimeRange() {
-    const currentHour = (new Date()).getHours();
-    console.log(currentHour);
-    return (currentHour >= dailyStartHour) && (currentHour < dailyEndHour);
+const timeLapseConfiguration = {
+    dailyStartHour: (process.env.CAM_START || 10),
+    dailyEndHour: (process.env.CAM_END || 18),
+    picturesPerDay: (process.env.CAM_MAX_PICS || 3),
+    pictureIntervalHours: (process.env.CAM_HOURS || 2),
+    checkIntervalMS: ((process.env.CAM_INTERVAL || 15) * 60 * 1000)
+}
+const timeLapseState = {
+    nextPictureHour: -1,
+    currentPictureCount: 0,
+    lastDate: new Date(),
+    startNewDay:false,
+    nextInterval: 0
 }
 
-async function processCamera(shouldTakePicture) {
+function isInRange(value, start, end) {
+    return (value >= start) && (value < end);
+}
+
+function updateTimeInterval(lastInterval, intervalSpan) {
+    const currentInterval = Date.now()
+    if (lastInterval == 0) {
+        lastInterval = currentInterval;
+    }
+    timeLapseState.nextInterval = (lastInterval + intervalSpan);
+    return timeLapseState.nextInterval - currentInterval;
+}
+
+function checkAndUpdateDayChange() {
+    const currentDate = new Date();
+    timeLapseState.startNewDay = false;
+    if (currentDate.getDate() != lastDate.getDate()) {
+        timeLapseState.currentPictureCount = 0;
+        timeLapseState.nextPictureHour = -1;
+        timeLapseState.startNewDay = true;
+    }
+    timeLapseState.lastDate = currentDate;
+}
+
+async function processCamera() {
+    const shouldTakePicture = (currentDate.getHours() > timeLapseState.nextPictureHour) &&
+    (timeLapseState.currentPictureCount < timeLapseConfiguration.picturesPerDay);
     try {
         //Only update the background if an object is not detected
         if (!(await isObjectDetected(currentCameras[0]))) {
             console.log("Updating");
             await updateCameraBackground(currentCameras[0]);
             return false;
-        } else if(shouldTakePicture) { //Only take a picture if we are allowed
+        } else if (shouldTakePicture) { //Only take a picture if we are allowed
             console.log("capturing");
             await captureAndSaveCameraImage(currentCameras[0]);
+            timeLapseState.currentPictureCount += 1;
+            timeLapseState.nextPictureHour = currentDate.getHours() + timeLapseConfiguration.pictureIntervalHours;
             return true;
         }
     } catch (e) {
@@ -72,28 +100,22 @@ async function processCamera(shouldTakePicture) {
 }
 
 async function cameraCheckInterval() {
-    const currentInterval = Date.now()
-    lastInterval = (lastInterval + checkIntervalMS);
-    const waitTime = lastInterval - currentInterval;
-    console.log(waitTime)
-    console.log(lastInterval)
-    setTimeout(cameraCheckInterval, waitTime);
 
-    if (!isNowInTimeRange()) { return; }
+    setTimeout(cameraCheckInterval,
+        updateTimeInterval(timeLapseState.nextInterval,
+            timeLapseConfiguration.checkIntervalMS));
 
-    const currentDate = new Date();
-    if (currentDate.getDate() != lastDate.getDate()) {
-        currentPictureCount = 0;
-        nextPictureHour = -1;
+    if (!isInRange(
+        (new Date()).getHours(),
+        timeLapseConfiguration.dailyStartHour,
+        timeLapseConfiguration.dailyEndHour
+    )) {
+        return;
     }
-    lastDate = currentDate;
-    const shouldTakePicture = (currentDate.getHours() > nextPictureHour) && 
-                                    (currentPictureCount < picturesPerDay);
+
+    checkAndUpdateDayChange();
     console.log("Processing");
-    if ((await processCamera(shouldTakePicture))) {
-        currentPictureCount += 1;
-        nextPictureHour = currentDate.getHours() + pictureIntervalHours;
-    }
+    processCamera();
 }
 
 function loadImageObjectListFromDisk() {
@@ -125,22 +147,30 @@ function findImageIndexByID(id) {
     return index;
 }
 
+async function fetchCamera(camera, route) {
+    const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/${route}`);
+    if ((!camRes && camRes.ok)) { throw `could not ${route}`; }
+    return camRes;
+}
+
 async function getCameraImage(camera) {
-    const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/get_photo`);
-    if ((!camRes && camRes.ok)) { throw "could not get image"; }
+    const camRes = await fetchCamera(camera, "get_photo");
     return await camRes.arrayBuffer();
 }
 
 async function isObjectDetected(camera) {
-    const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/is_object_detected`);
-    if ((!camRes && camRes.ok)) { throw "could not get response"; }
+    const camRes = await fetchCamera(camera, "is_object_detected");
     const responseObject = await camRes.json();
     return responseObject.detected > 200;
 }
 
 async function updateCameraBackground(camera) {
-    const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/update_background_image`);
-    if ((!camRes && camRes.ok)) { throw "could not update background"; }
+    const camRes = await fetchCamera(camera, "update_background_image");
+    return true;
+}
+
+async function setCameraBackground(camera) {
+    const camRes = await fetchCamera(camera, "set_background_image");
     return true;
 }
 
@@ -182,12 +212,8 @@ function findCamera(cameraIP) {
 
 async function updateCameraStatus(camera) {
     try {
-        const camRes = await fetchWrap(`http://${camera.ip}:${cameraPort}/status`);
-        if (!(camRes && camRes.ok)) {
-            camera.status = "bad response";
-        } else {
-            camera.status = (await camRes.json()).status;
-        }
+        const camRes = await fetchCamera(camera, "status");
+        camera.status = (await camRes.json()).status;
     } catch (e) {
         console.log(e);
         camera.status = "could not get status";
@@ -256,6 +282,18 @@ app.get('/capture', async (req, res) => {
     }
     try {
         res.json(captureAndSaveCameraImage(currentCameras[0]));
+    } catch (e) {
+        res.status(400).json({ error: e.toString() });
+    }
+});
+
+app.get('/reset_background', async (req, res) => {
+    if (currentCameras.length == 0) {
+        res.status(404).send("No cameras");
+        return;
+    }
+    try {
+        res.json({status:await setCameraBackground(currentCameras[0])});
     } catch (e) {
         res.status(400).json({ error: e.toString() });
     }
