@@ -44,7 +44,8 @@ const timeLapseConfiguration = {
     dailyEndHour: (process.env.CAM_END || 18),
     picturesPerDay: (process.env.CAM_MAX_PICS || 3),
     pictureIntervalHours: (process.env.CAM_HOURS || 2),
-    checkIntervalMS: ((process.env.CAM_INTERVAL || 15) * 60 * 1000)
+    checkIntervalMS: ((process.env.CAM_INTERVAL || 15) * 60 * 1000),
+    contourThreshold: (process.env.CAM_THRESHOLD || 50)
 }
 const timeLapseState = {
     nextPictureHour: -1,
@@ -162,7 +163,7 @@ async function getCameraImage(camera) {
 async function isObjectDetected(camera) {
     const camRes = await fetchCamera(camera, "is_object_detected");
     const responseObject = await camRes.json();
-    return responseObject.detected > 200;
+    return responseObject.detected > timeLapseConfiguration.contourThreshold;
 }
 
 async function updateCameraBackground(camera) {
