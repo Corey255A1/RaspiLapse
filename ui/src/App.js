@@ -3,6 +3,8 @@ import './App.css';
 import ImageList from './components/ImageList'
 import MainImage from './components/MainImage'
 const backend = `http://${window.location.hostname}:8181`;
+//const backend = `http://${window.location.hostname}:8996`;
+//const backend = `http://192.168.1.125:8181`;
 
 
 /**
@@ -13,7 +15,8 @@ const backend = `http://${window.location.hostname}:8181`;
 
 function App() {
   const [imageList, setImageList] = useState([]);
-  const [current_image, setCurrentImage] = useState(null);
+  const [currentImage, setCurrentImage] = useState(null);
+
   useEffect(() => {
     async function updateImageList() {
       const initial = await getRecentImages();
@@ -39,9 +42,9 @@ function App() {
     return object;
   }
 
-  async function deleteImage(image_object_id) {
+  async function deleteImage(imageObjectID) {
     const route = `${backend}/delete`;
-    const body = JSON.stringify({ id: image_object_id });
+    const body = JSON.stringify({ id: imageObjectID });
     const response = await fetch(route, {
       method: 'POST',
       body: body,
@@ -54,7 +57,7 @@ function App() {
     console.log(response);
     if (!(response && response.ok)) { return; }
 
-    const index = imageList.findIndex(image_object=>image_object.time === image_object_id);
+    const index = imageList.findIndex(imageObject => imageObject.time === imageObjectID);
     imageList.splice(index, 1);
     console.log(imageList);
     setImageList(imageList.slice());
@@ -71,6 +74,40 @@ function App() {
     setImageList(imageList.slice());
   }
 
+  async function fetchPreviousImage(imageObjectID) {
+    const route = `${backend}/previous?id=${imageObjectID}`;
+    const response = await fetch(route);
+    if (!(response && response.ok)) { return null; }
+
+    return await response.json();
+  }
+
+  async function previousImage() {
+    const currentIndex = imageList.findIndex((imageObject) => { return imageObject.time == currentImage.time });
+    let nextImageObject = null;
+    if (currentIndex + 1 >= imageList.length) {
+      nextImageObject = await fetchPreviousImage(currentImage.time);
+      if (nextImageObject == null) {
+        return;
+      }
+      imageList.push(nextImageObject);
+    }
+    else{
+      nextImageObject = imageList[currentIndex + 1];
+    }
+
+    setCurrentImage(nextImageObject);
+  }
+
+  async function nextImage() {
+    const currentIndex = imageList.findIndex((imageObject) => { return imageObject.time == currentImage.time });
+    let nextImageObject = null;
+    if (currentIndex - 1 < 0) { return; }
+
+    nextImageObject = imageList[currentIndex - 1];
+    setCurrentImage(nextImageObject);
+  }
+
   return (
     <div className="App">
       <header className="App-header">
@@ -79,12 +116,14 @@ function App() {
         </h1>
       </header>
       <MainImage
-        imageObject={current_image}
-        onDelete={deleteImage} 
-        onCapture={captureImage}/>
+        imageObject={currentImage}
+        onDelete={deleteImage}
+        onCapture={captureImage} 
+        onNextImage={nextImage}
+        onPreviousImage={previousImage}/>
       <ImageList
         imageObjects={imageList}
-        onImageSelected={(image_object) => setCurrentImage(image_object)} />
+        onImageSelected={(imageObject) => setCurrentImage(imageObject)} />
     </div>
   );
 }

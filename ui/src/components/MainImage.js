@@ -1,15 +1,15 @@
 import React from 'react';
 
-const MainImage = ({ imageObject, onCapture, onDelete }) => {
+const MainImage = ({ imageObject, onCapture, onDelete, onPreviousImage, onNextImage }) => {
     return (
         <div className="main-image">
             {imageObject != null && (<div>
                 <div className="slide-image">
-                    <button>&lt;</button>
+                    <button onClick={()=>onNextImage()}>&lt;</button>
                     <div>
                         <img src={imageObject.url} alt={imageObject.time}/>                    
                     </div>
-                    <button>&gt;</button>
+                    <button onClick={()=>onPreviousImage()}>&gt;</button>
                 </div>
                 <div>{imageObject.time}</div>
             </div>)}
